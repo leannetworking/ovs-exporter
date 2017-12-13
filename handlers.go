@@ -207,19 +207,19 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     	re := regexp.MustCompile("port +(.*?): rx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), frame=(.*?), over=(.*?), crc=(.*?) .*tx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), coll=(.*)")
     	subMatch := re.FindStringSubmatch(twoLines)
     	if len(subMatch) > 13 {
-    		portEntries[int(i/2)].PortNumber   = subMatch[1]
-			portEntries[int(i/2)].RxPackets    = subMatch[2]
-			portEntries[int(i/2)].RxBytes      = subMatch[3]
-			portEntries[int(i/2)].RxDrops      = subMatch[4]
-			portEntries[int(i/2)].RxErrors     = subMatch[5]
-			portEntries[int(i/2)].RxFrameErr   = subMatch[6]
-			portEntries[int(i/2)].RxOverruns   = subMatch[7]
-			portEntries[int(i/2)].RxCrcErrors  = subMatch[8]
-			portEntries[int(i/2)].TxPackets    = subMatch[9]
-			portEntries[int(i/2)].TxBytes      = subMatch[10]
-			portEntries[int(i/2)].TxDrops      = subMatch[11]
-			portEntries[int(i/2)].TxErrors     = subMatch[12]
-			portEntries[int(i/2)].TxCollisions = subMatch[13]
+    		portEntries[int(i/2)].PortNumber   = noQuestionMark(subMatch[1])
+			portEntries[int(i/2)].RxPackets    = noQuestionMark(subMatch[2])
+			portEntries[int(i/2)].RxBytes      = noQuestionMark(subMatch[3])
+			portEntries[int(i/2)].RxDrops      = noQuestionMark(subMatch[4])
+			portEntries[int(i/2)].RxErrors     = noQuestionMark(subMatch[5])
+			portEntries[int(i/2)].RxFrameErr   = noQuestionMark(subMatch[6])
+			portEntries[int(i/2)].RxOverruns   = noQuestionMark(subMatch[7])
+			portEntries[int(i/2)].RxCrcErrors  = noQuestionMark(subMatch[8])
+			portEntries[int(i/2)].TxPackets    = noQuestionMark(subMatch[9])
+			portEntries[int(i/2)].TxBytes      = noQuestionMark(subMatch[10])
+			portEntries[int(i/2)].TxDrops      = noQuestionMark(subMatch[11])
+			portEntries[int(i/2)].TxErrors     = noQuestionMark(subMatch[12])
+			portEntries[int(i/2)].TxCollisions = noQuestionMark(subMatch[13])
     	} else {
     		fmt.Fprintln(w, "Output is: ", subMatch, twoLines)
     		return
@@ -323,3 +323,9 @@ func GetGroups(w http.ResponseWriter, r *http.Request) {
     //Creating Prometheus compatible output for every stat with portNumber identifyer:
 }
 
+func noQuestionMark(s string) string {
+	if s == "?" {
+		return "0"
+	}
+	return s
+}
