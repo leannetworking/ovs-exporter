@@ -4,6 +4,34 @@ Open vSwitch is popular virutal switch that enables high performance software de
 
 The current implementaion uses simple ``ovs-ofctl`` commands to get the given statistics. Future releases might include usage of direct OpenFlow libraries, but for now for the sake of simplicity we stick to ``cmd`` commands.
 
+To run on 64-bit Linux machines simply type ``./ovs-exporter``. For other architectures comply the GO code.
+
+To integrate into Prometheus, add e.g. the following lines to the Prometheus config file (assuming you have two nodes with OVS having management IP at 192.168.0.10 and 192.168.0.20):
+
+      - job_name: 'ports'
+        static_configs:
+          - targets: ['192.168.0.10', '192.168.0.20']
+        metrics_path: /ports
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: 127.0.0.1:8081  # OVS exporter.
+    
+      - job_name: 'flows'
+        static_configs:
+          - targets: ['192.168.0.10', '192.168.0.20']
+        metrics_path: /flows
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: 127.0.0.1:8081  # OVS exporter.
+
 The code is highly experimental, use it with caution!
 
 Happy coding :-)
