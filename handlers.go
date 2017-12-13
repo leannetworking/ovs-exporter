@@ -13,7 +13,7 @@ import (
 
 //the passive TCP port where OVS entries are listening
 //for OpenFlow commands
-var ovsPort string = "6655"
+var ovsPort string = "16633"
 
 func GetFlows(w http.ResponseWriter, r *http.Request) {
     //vars := mux.Vars(r)
@@ -125,8 +125,8 @@ func GetFlows(w http.ResponseWriter, r *http.Request) {
     //	- idle time as "flowIdleTime" type Gauge
     
     //flowPackets
-    fmt.Fprintln(w, "HELP flowPackets The number of packets matched for the given OpenFlow entry")
-    fmt.Fprintln(w, "TYPE flowPackets counter")
+    fmt.Fprintln(w, "# HELP flowPackets The number of packets matched for the given OpenFlow entry")
+    fmt.Fprintln(w, "# TYPE flowPackets counter")
     for _,entry := range flowEntries {
     	fmt.Fprintln(w, 
     		"flowPackets{match=\""  + entry.Match + 
@@ -137,8 +137,8 @@ func GetFlows(w http.ResponseWriter, r *http.Request) {
     }
      
     //flowBytes
-    fmt.Fprintln(w, "HELP flowBytes The number of bytes matched for the given OpenFlow entry")
-    fmt.Fprintln(w, "TYPE flowBytes counter")
+    fmt.Fprintln(w, "# HELP flowBytes The number of bytes matched for the given OpenFlow entry")
+    fmt.Fprintln(w, "# TYPE flowBytes counter")
     for _,entry := range flowEntries {
     	fmt.Fprintln(w, 
     		"flowBytes{match=\"" 	+ entry.Match + 
@@ -149,8 +149,8 @@ func GetFlows(w http.ResponseWriter, r *http.Request) {
     }
     
     //flowAge
-    fmt.Fprintln(w, "HELP flowAge The number of seconds have passed since the given OpenFlow entry was created")
-    fmt.Fprintln(w, "TYPE flowAge gauge")
+    fmt.Fprintln(w, "# HELP flowAge The number of seconds have passed since the given OpenFlow entry was created")
+    fmt.Fprintln(w, "# TYPE flowAge gauge")
     for _,entry := range flowEntries {
     	fmt.Fprintln(w, 
     		"flowAge{match=\""	 	+ entry.Match + 
@@ -161,8 +161,8 @@ func GetFlows(w http.ResponseWriter, r *http.Request) {
     }
     
     //flowIdleTime
-    fmt.Fprintln(w, "HELP flowIdleTime The number of seconds have passed since the last packet has seen for the given OpenFlow entry")
-    fmt.Fprintln(w, "TYPE flowIdleTime gauge")
+    fmt.Fprintln(w, "# HELP flowIdleTime The number of seconds have passed since the last packet has seen for the given OpenFlow entry")
+    fmt.Fprintln(w, "# TYPE flowIdleTime gauge")
     for _,entry := range flowEntries {
     	fmt.Fprintln(w, 
     		"flowIdleTime{match=\""	+ entry.Match + 
@@ -237,8 +237,8 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     //Creating Prometheus compatible output for every stat with portNumber identifyer:
     
     //portRxPackets
-    fmt.Fprintln(w, "HELP portRxPackets The number of packet that was recieved by a given port")
-    fmt.Fprintln(w, "TYPE portRxPackets counter")
+    fmt.Fprintln(w, "# HELP portRxPackets The number of packet that was recieved by a given port")
+    fmt.Fprintln(w, "# TYPE portRxPackets counter")
     for _,entry := range portEntries {
     	fmt.Fprintln(w, 
     		"portRxPackets{portNumber=\"" + entry.PortNumber + 
@@ -246,8 +246,8 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     }
  
     //portTxPackets
-    fmt.Fprintln(w, "HELP portTxPackets The number of packet that was sent by a given port")
-    fmt.Fprintln(w, "TYPE portTxPackets counter")
+    fmt.Fprintln(w, "# HELP portTxPackets The number of packet that was sent by a given port")
+    fmt.Fprintln(w, "# TYPE portTxPackets counter")
     for _,entry := range portEntries {
     	fmt.Fprintln(w, 
     		"portTxPackets{portNumber=\"" + entry.PortNumber + 
@@ -255,8 +255,8 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     }
 
     //portRxBytes
-    fmt.Fprintln(w, "HELP portRxBytes The number of bytes that was recieved by a given port")
-    fmt.Fprintln(w, "TYPE portRxBytes counter")
+    fmt.Fprintln(w, "# HELP portRxBytes The number of bytes that was recieved by a given port")
+    fmt.Fprintln(w, "# TYPE portRxBytes counter")
     for _,entry := range portEntries {
     	fmt.Fprintln(w, 
     		"portRxBytes{portNumber=\"" + entry.PortNumber + 
@@ -264,8 +264,8 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     }
  
     //portTxBytes
-    fmt.Fprintln(w, "HELP portTxBytes The number of bytes that was sent by a given port")
-    fmt.Fprintln(w, "TYPE portTxBytes counter")
+    fmt.Fprintln(w, "# HELP portTxBytes The number of bytes that was sent by a given port")
+    fmt.Fprintln(w, "# TYPE portTxBytes counter")
     for _,entry := range portEntries {
     	fmt.Fprintln(w, 
     		"portTxBytes{portNumber=\"" + entry.PortNumber + 
@@ -273,8 +273,8 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     }
 
     //portRxDrops
-    fmt.Fprintln(w, "HELP portRxDrops The number of packets that was dropped on receive side by a given port")
-    fmt.Fprintln(w, "TYPE portRxDrops counter")
+    fmt.Fprintln(w, "# HELP portRxDrops The number of packets that was dropped on receive side by a given port")
+    fmt.Fprintln(w, "# TYPE portRxDrops counter")
     for _,entry := range portEntries {
     	fmt.Fprintln(w, 
     		"portRxDrops{portNumber=\"" + entry.PortNumber + 
@@ -282,8 +282,8 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     }
  
     //portTxDrops
-    fmt.Fprintln(w, "HELP portTxDrops The number of packets that was dropped on sending side by a given port")
-    fmt.Fprintln(w, "TYPE portTxDrops counter")
+    fmt.Fprintln(w, "# HELP portTxDrops The number of packets that was dropped on sending side by a given port")
+    fmt.Fprintln(w, "# TYPE portTxDrops counter")
     for _,entry := range portEntries {
     	fmt.Fprintln(w, 
     		"portTxDrops{portNumber=\"" + entry.PortNumber + 
