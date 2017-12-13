@@ -8,7 +8,7 @@ import (
     "regexp"
     "strings"
 
-    "github.com/gorilla/mux"
+//    "github.com/gorilla/mux"
 )
 
 //the passive TCP port where OVS entries are listening
@@ -16,8 +16,13 @@ import (
 var ovsPort string = "6655"
 
 func GetFlows(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    ovsIP := vars["ovsIP"]
+    //vars := mux.Vars(r)
+    //ovsIP := vars["ovsIP"]
+    ovsIP := r.URL.Query()["target"][0]
+    
+    if ovsIP == "" {
+    	fmt.Fprintln(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/flows?tartget=<targetIP>")
+    }
     
     //creating ovs-ofctl command
     cmd := exec.Command("ovs-ofctl", "dump-flows", "tcp:" + ovsIP + ":" + ovsPort)
@@ -169,8 +174,13 @@ func GetFlows(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPorts(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    ovsIP := vars["ovsIP"]
+    //vars := mux.Vars(r)
+    //ovsIP := vars["ovsIP"]
+    ovsIP := r.URL.Query()["target"][0]
+    
+    if ovsIP == "" {
+    	fmt.Fprintln(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/ports?tartget=<targetIP>")
+    }
     
     //creating ovs-ofctl command
     cmd := exec.Command("ovs-ofctl", "dump-ports", "tcp:" + ovsIP + ":" + ovsPort)
@@ -178,7 +188,7 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
 	outString := string(out)
 	//if error was occured we return
 	if err != nil {
-		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString)
+		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString, "\nOVS IP is: ", ovsIP)
 		return
 	}
     //if command was succesfull we further parse the output
@@ -282,8 +292,13 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetGroups(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    ovsIP := vars["ovsIP"]
+    //vars := mux.Vars(r)
+    //ovsIP := vars["ovsIP"]
+    ovsIP := r.URL.Query()["target"][0]
+    
+    if ovsIP == "" {
+    	fmt.Fprintln(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/groups?tartget=<targetIP>")
+    }
     
     //creating ovs-ofctl command
     cmd := exec.Command("ovs-ofctl", "-O", "openflow13", "dump-groups", "tcp:" + ovsIP + ":" + ovsPort)

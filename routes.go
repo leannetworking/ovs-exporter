@@ -15,19 +15,19 @@ var routes = Routes{
     Route{
         "FlowStats",
         "GET",
-        "/flows/{ovsIP}",
+        "/flows",
         GetFlows,
     },
     Route{
         "PortStats",
         "GET",
-        "/ports/{ovsIP}",
+        "/ports",
         GetPorts,
     },
     Route{
         "GroupStats",
         "GET",
-        "/groups/{ovsIP}",
+        "/groups",
         GetGroups,
     },
 }
