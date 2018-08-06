@@ -178,7 +178,7 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
     for i:=0; i<len(lines); i+=2 {
     	twoLines := lines[i] + lines[i+1]
     	
-    	//We search every entry in one line as the following (there is no new line charachter between them):
+    	//Searching every entry in one line as the following (there is no new line charachter between them):
     	//  port 1: rx pkts=1148284, bytes=76073652, drop=0, errs=0, frame=0, over=0, crc=0
         //          tx pkts=1814122, bytes=90439143776, drop=0, errs=0, coll=0
     	re := regexp.MustCompile("port +(.*?): rx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), frame=(.*?), over=(.*?), crc=(.*?) .*tx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), coll=(.*)")
@@ -204,7 +204,13 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
     }
            
     //Creating Prometheus compatible output for every stat with portNumber identifyer:
-    
+    //	- number of packets recieved by the given OpenFlow port as "portRxPackets" type Counter
+    //	- number of packets sent by the given OpenFlow port as "portTxPackets" type Counter
+    //	- number of bytes recieved by the given OpenFlow port as "portRxBytes" type Counter
+    //	- number of bytes sent by the given OpenFlow port as "portTxBytes" type Counter
+    //	- number of packet drops in recieve side by the given OpenFlow port as "portRxDrops" type Counter
+    //	- number of packet drops in sending side by the given OpenFlow port as "portTxDrops" type Counter
+
     //portRxPackets
     fmt.Fprintln(w, "# HELP portRxPackets The number of packet that was recieved by a given port")
     fmt.Fprintln(w, "# TYPE portRxPackets counter")
@@ -374,6 +380,11 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
     //Creating Prometheus compatible output for every group stat with groupId label:
+    //	- number of packets that was forwarded by a group rule as "groupPackets" type Counter
+    //	- number of bytes that was forwarded by a group rule as "groupBytes" type Counter
+    //	- number of second that passed since a group rule was added as "groupPackets" type Gauge
+    //	- number of packets that was forwarded by a bucket in a group rule as "groupBucketPackets" type Counter
+    //	- number of bytes that was forwarded by a bucket in a group rule as "groupBucketBytes" type Counter
     
     //groupPackets
     fmt.Fprintln(w, "# HELP groupPackets The number of packet that was sent by a given group")
