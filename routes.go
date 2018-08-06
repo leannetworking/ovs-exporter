@@ -13,21 +13,9 @@ type Routes []Route
 
 var routes = Routes{
     Route{
-        "FlowStats",
+        "Metrics",
         "GET",
-        "/flows",
-        GetFlows,
-    },
-    Route{
-        "PortStats",
-        "GET",
-        "/ports",
-        GetPorts,
-    },
-    Route{
-        "GroupStats",
-        "GET",
-        "/groups",
-        GetGroups,
+        "/metrics",
+        GetMetrics,
     },
 }
