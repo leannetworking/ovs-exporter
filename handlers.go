@@ -1,30 +1,26 @@
 package main
 
 import (
-//    "encoding/json"
     "fmt"
     "net/http"
     "os/exec"
     "regexp"
     "strings"
 
-//    "github.com/gorilla/mux"
 )
 
 //the passive TCP port where OVS entries are listening
 //for OpenFlow commands
 var ovsPort string = "16633"
 
-func GetFlows(w http.ResponseWriter, r *http.Request) {
-    //vars := mux.Vars(r)
-    //ovsIP := vars["ovsIP"]
+func GetMetrics(w http.ResponseWriter, r *http.Request) {
     ovsIP := r.URL.Query()["target"][0]
     
     if ovsIP == "" {
     	fmt.Fprintln(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/flows?tartget=<targetIP>")
     }
     
-    //creating ovs-ofctl command
+    //creating ovs-ofctl command for flow staticstics
     cmd := exec.Command("ovs-ofctl", "dump-flows", "tcp:" + ovsIP + ":" + ovsPort)
     out, err := cmd.Output()
 	outString := string(out)
@@ -109,15 +105,6 @@ func GetFlows(w http.ResponseWriter, r *http.Request) {
     	
     }
     
-    //fmt.Fprintln(w, "Output is: ", lines)
-    //use this to create just a simple JSON response
-    //w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-    //w.WriteHeader(http.StatusOK)
-    //if err := json.NewEncoder(w).Encode(flowEntries); err != nil {
-    //    panic(err)
-    //}
-    
-    
     //Creating Prometheus compatible output for:
     //	- number of packets as "flowPackets" type Counter
     //	- number of bytes as "flowBytes" type Counter
@@ -171,21 +158,11 @@ func GetFlows(w http.ResponseWriter, r *http.Request) {
     		"\",priority=\""		+ entry.Priority +
     		"\"} "					+ entry.IdleAge)    		 
     }
-}
-
-func GetPorts(w http.ResponseWriter, r *http.Request) {
-    //vars := mux.Vars(r)
-    //ovsIP := vars["ovsIP"]
-    ovsIP := r.URL.Query()["target"][0]
     
-    if ovsIP == "" {
-    	fmt.Fprintln(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/ports?tartget=<targetIP>")
-    }
-    
-    //creating ovs-ofctl command
-    cmd := exec.Command("ovs-ofctl", "dump-ports", "tcp:" + ovsIP + ":" + ovsPort)
-    out, err := cmd.Output()
-	outString := string(out)
+    //Creating ovs-ofctl command for port statisctics
+    cmd = exec.Command("ovs-ofctl", "dump-ports", "tcp:" + ovsIP + ":" + ovsPort)
+    out, err = cmd.Output()
+	outString = string(out)
 	//if error was occured we return
 	if err != nil {
 		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString, "\nOVS IP is: ", ovsIP)
@@ -194,7 +171,7 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     //if command was succesfull we further parse the output
     
     
-    lines := strings.Split(outString, "\n")
+    lines = strings.Split(outString, "\n")
     //skip the first and last lines, since it is just a response header and an empty line
     lines = lines[1:(len(lines)-1)]
     portEntries := make([]Port, int(len(lines)/2))
@@ -225,15 +202,7 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     		return
     	}
     }
-    
-    //fmt.Fprintln(w, "Output is: ", lines)
-    //use this to create just a simple JSON response
-    //w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-    //w.WriteHeader(http.StatusOK)
-    //if err := json.NewEncoder(w).Encode(portEntries); err != nil {
-    //    panic(err)
-    //}
-       
+           
     //Creating Prometheus compatible output for every stat with portNumber identifyer:
     
     //portRxPackets
@@ -289,21 +258,11 @@ func GetPorts(w http.ResponseWriter, r *http.Request) {
     		"portTxDrops{portNumber=\"" + entry.PortNumber + 
     		"\"} "					    + entry.TxDrops)    		 
     }
-}
 
-func GetGroups(w http.ResponseWriter, r *http.Request) {
-    //vars := mux.Vars(r)
-    //ovsIP := vars["ovsIP"]
-    ovsIP := r.URL.Query()["target"][0]
-    
-    if ovsIP == "" {
-    	fmt.Fprintln(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/groups?tartget=<targetIP>")
-    }
-    
-    //creating ovs-ofctl command
-    cmd := exec.Command("ovs-ofctl", "-O", "openflow13", "dump-groups", "tcp:" + ovsIP + ":" + ovsPort)
-    out, err := cmd.Output()
-	outString := string(out)
+    //creating ovs-ofctl command for groups
+    cmd = exec.Command("ovs-ofctl", "-O", "openflow13", "dump-groups", "tcp:" + ovsIP + ":" + ovsPort)
+    out, err = cmd.Output()
+	outString = string(out)
 	//if error was occured we return
 	if err != nil {
 		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString)
@@ -311,16 +270,167 @@ func GetGroups(w http.ResponseWriter, r *http.Request) {
 	}
     //if command was succesfull we further parse the output
     
-       
-    fmt.Fprintln(w, "Output is: ", outString)
-    //use this to create just a simple JSON response
-    //w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-    //w.WriteHeader(http.StatusOK)
-    //if err := json.NewEncoder(w).Encode(groupEntries); err != nil {
-    //    panic(err)
-    //}
-       
-    //Creating Prometheus compatible output for every stat with portNumber identifyer:
+    lines = strings.Split(outString, "\n")
+    //skip the first and last lines, since it is just a response header and an empty line
+    lines = lines[1:(len(lines)-1)]
+    groupEntries := make([]Group, len(lines))
+    for i, entry := range lines {
+    	re := regexp.MustCompile("")
+    	
+    	//Group Type
+    	re = regexp.MustCompile("group_id=(.*?),")
+    	subMatch := re.FindStringSubmatch(entry)
+    	if len(subMatch) > 1 {
+    		groupEntries[i].GroupId = subMatch[1]
+    	}
+
+    	//Group Type
+    	re = regexp.MustCompile("type=(.*?),")
+    	subMatch = re.FindStringSubmatch(entry)
+    	if len(subMatch) > 1 {
+    		groupEntries[i].GroupType = subMatch[1]
+    	}
+    	
+    	//Split the group line into buckets
+    	buckets := strings.Split(entry, "bucket=")
+    	bucketEntries := make([]Bucket, len(buckets)-1)
+    	for j:=1; j<len(buckets); j++ {
+			re = regexp.MustCompile("actions=(.*?),?$")
+			subMatch = re.FindStringSubmatch(buckets[j])
+			if len(subMatch) > 1 {
+				bucketEntries[j-1].Actions = subMatch[1]
+			}	
+    	}    	
+    	groupEntries[i].Buckets = bucketEntries
+	}
+	
+
+    //creating ovs-ofctl command for group-stats
+    cmd = exec.Command("ovs-ofctl", "-O", "openflow13", "dump-group-stats", "tcp:" + ovsIP + ":" + ovsPort)
+    out, err = cmd.Output()
+	outString = string(out)
+	//if error was occured we return
+	if err != nil {
+		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString)
+		return
+	}
+    //if command was succesfull we further parse the output
+    
+    lines = strings.Split(outString, "\n")
+    //skip the first and last lines, since it is just a response header and an empty line
+    lines = lines[1:(len(lines)-1)]
+    for _, entry := range lines {
+    	re := regexp.MustCompile("")
+    	
+    	groupIndex := -1
+    	
+    	//Get the matching Group ID
+    	re = regexp.MustCompile("group_id=(.*?),")
+    	subMatch := re.FindStringSubmatch(entry)
+    	if len(subMatch) > 1 {
+    		for j, group := range groupEntries {
+    			if group.GroupId == subMatch[1] {
+    				groupIndex = j 
+    			}
+    		}
+    	}
+
+    	//Duration
+    	re = regexp.MustCompile("duration=(.*?)s,")
+    	subMatch = re.FindStringSubmatch(entry)
+    	if len(subMatch) > 1 {
+    		groupEntries[groupIndex].Duration = subMatch[1]
+    	}
+    	
+    	//Bucket byte and packet stat
+    	buckets := strings.Split(entry, ":")
+    	//The 0th element in this split should contain the aggregated packet/byte counter for the whole group
+		re = regexp.MustCompile("packet_count=([0-9]+)")
+		subMatch = re.FindStringSubmatch(buckets[0])
+		if len(subMatch) > 1 {
+			groupEntries[groupIndex].Packets = subMatch[1]
+		}
+
+		re = regexp.MustCompile("byte_count=([0-9]+)")
+		subMatch = re.FindStringSubmatch(buckets[0])
+		if len(subMatch) > 1 {
+			groupEntries[groupIndex].Bytes = subMatch[1]
+		}
+    	 
+    	//The others should contain bucket data
+    	for j:=1; j<len(buckets); j++ {
+			re = regexp.MustCompile("packet_count=([0-9]+)")
+			subMatch = re.FindStringSubmatch(buckets[j])
+			if len(subMatch) > 1 {
+				groupEntries[groupIndex].Buckets[j-1].Packets = subMatch[1]
+			}
+
+			re = regexp.MustCompile("byte_count=([0-9]+)")
+			subMatch = re.FindStringSubmatch(buckets[j])
+			if len(subMatch) > 1 {
+				groupEntries[groupIndex].Buckets[j-1].Bytes = subMatch[1]
+			}
+    	}    	
+	}
+
+    //Creating Prometheus compatible output for every group stat with groupId label:
+    
+    //groupPackets
+    fmt.Fprintln(w, "# HELP groupPackets The number of packet that was sent by a given group")
+    fmt.Fprintln(w, "# TYPE groupPackets counter")
+    for _,entry := range groupEntries {
+    	fmt.Fprintln(w,
+			"groupPackets{groupId=\"" + entry.GroupId +
+			"\",groupType=\"" 		  + entry.GroupType +
+			"\"} "					  + entry.Packets)    		 
+	}
+
+    //groupBytes
+    fmt.Fprintln(w, "# HELP groupBytes The number of bytes that was sent by a given group")
+    fmt.Fprintln(w, "# TYPE groupBytes counter")
+    for _,entry := range groupEntries {
+    	fmt.Fprintln(w,
+			"groupBytes{groupId=\""   + entry.GroupId +
+			"\",groupType=\"" 		  + entry.GroupType +
+			"\"} "					  + entry.Bytes)    		 
+	}
+	
+    //groupDuration
+    fmt.Fprintln(w, "# HELP groupDuration The number of seconds passed since the group entry was added")
+    fmt.Fprintln(w, "# TYPE groupDuration gauge")
+    for _,entry := range groupEntries {
+    	fmt.Fprintln(w,
+			"groupDuration{groupId=\""+ entry.GroupId +
+			"\",groupType=\"" 		  + entry.GroupType +
+			"\"} "					  + entry.Duration)    		 
+	}	
+
+    //groupBucketPackets
+    fmt.Fprintln(w, "# HELP groupBucketPackets The number of packet that was sent by a given group bucket")
+    fmt.Fprintln(w, "# TYPE groupBucketPackets counter")
+    for _,entry := range groupEntries {
+	    for _,bucket := range entry.Buckets {
+	    	fmt.Fprintln(w,
+				"groupBucketPackets{groupId=\""  + entry.GroupId +
+				"\",groupType=\"" 				 + entry.GroupType +
+				"\",bucketActions=\"" 			 + bucket.Actions +
+				"\"} "					         + bucket.Packets)    		 
+	    }
+	}
+
+    //groupBucketBytes
+    fmt.Fprintln(w, "# HELP groupBucketBytes The number of bytes that was sent by a given group bucket")
+    fmt.Fprintln(w, "# TYPE groupBucketBytes counter")
+    for _,entry := range groupEntries {
+	    for _,bucket := range entry.Buckets {
+	    	fmt.Fprintln(w,
+				"groupBucketBytes{groupId=\""    + entry.GroupId +
+				"\",groupType=\"" 				 + entry.GroupType +
+				"\",bucketActions=\"" 			 + bucket.Actions +
+				"\"} "					         + bucket.Bytes)    		 
+	    }
+	}
+
 }
 
 func noQuestionMark(s string) string {

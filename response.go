@@ -42,8 +42,17 @@ type Ports []Port
 type Group struct {
     GroupId   string    `json:"groupid"`
     GroupType string   	`json:"grouptype"`
-    Buckets   string 	`json:"buckets"` //TODO: this should be an arry of bucket entries...
+    Buckets   []Bucket 	`json:"buckets"` 
     Duration  string	`json:"duration"`
+    Bytes     string	`json:"bytes"`
+    Packets   string    `json:"packets"`
+}
+
+type Bucket struct {
+//    BucketId  string    `json:"bucketid"` // for now I see no real usage of BucketID
+    Actions   string 	`json:"actions"` 
+    Bytes     string	`json:"bytes"`
+    Packets   string    `json:"packets"`
 }
 
 type Groups []Group
