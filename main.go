@@ -5,11 +5,11 @@ package main
 //Open vSwtich entry and gives back the stats
 //in Prometheus compatible format
 
-//Written by Megyo @ LeanNet 
+//Written by Megyo @ LeanNet
 
 import (
-    "log"
-    "net/http"
+	"log"
+	"net/http"
 )
 
 //the TCP port that this scripts listens
@@ -17,8 +17,7 @@ var listenPort string = ":8081"
 
 func main() {
 
-    router := NewRouter()
+	router := NewRouter()
 
-    log.Fatal(http.ListenAndServe(listenPort, router))
+	log.Fatal(http.ListenAndServe(listenPort, router))
 }
-
