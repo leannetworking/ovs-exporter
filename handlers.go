@@ -3,14 +3,15 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os/exec"
 	"regexp"
 	"strings"
 )
 
 //the passive TCP port where OVS entries are listening
 //for OpenFlow commands
-var ovsPort string = "16633"
+var ovsPort int = 16633
+var ofReader OvsOfStatReader = ofcli{}
+
 
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	ovsIP := r.URL.Query()["target"][0]
@@ -19,20 +20,13 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/flows?tartget=<targetIP>")
 	}
 
-	//creating ovs-ofctl command for flow staticstics
-	cmd := exec.Command("ovs-ofctl", "dump-flows", "tcp:"+ovsIP+":"+ovsPort)
-	out, err := cmd.Output()
-	outString := string(out)
+	lines, err := ofReader.DumpFlows(ovsIP, ovsPort)
 	//if error was occured we return
 	if err != nil {
-		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString)
+		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", lines)
 		return
 	}
 	//if command was succesfull we further parse the output
-
-	lines := strings.Split(outString, "\n")
-	//skip the first and last lines, since it is just a response header and an empty line
-	lines = lines[1:(len(lines) - 1)]
 	flowEntries := make([]Flow, len(lines))
 	for i, entry := range lines {
 		re := regexp.MustCompile("")
@@ -157,20 +151,13 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 				"\"} "+entry.IdleAge)
 	}
 
-	//Creating ovs-ofctl command for port statisctics
-	cmd = exec.Command("ovs-ofctl", "dump-ports", "tcp:"+ovsIP+":"+ovsPort)
-	out, err = cmd.Output()
-	outString = string(out)
+	lines, err = ofReader.DumpPorts(ovsIP, ovsPort)
 	//if error was occured we return
 	if err != nil {
-		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString, "\nOVS IP is: ", ovsIP)
+		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", lines, "\nOVS IP is: ", ovsIP)
 		return
 	}
 	//if command was succesfull we further parse the output
-
-	lines = strings.Split(outString, "\n")
-	//skip the first and last lines, since it is just a response header and an empty line
-	lines = lines[1:(len(lines) - 1)]
 	portEntries := make([]Port, int(len(lines)/2))
 	for i := 0; i < len(lines); i += 2 {
 		twoLines := lines[i] + lines[i+1]
@@ -262,20 +249,13 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 				"\"} "+entry.TxDrops)
 	}
 
-	//creating ovs-ofctl command for groups
-	cmd = exec.Command("ovs-ofctl", "-O", "openflow13", "dump-groups", "tcp:"+ovsIP+":"+ovsPort)
-	out, err = cmd.Output()
-	outString = string(out)
+	lines, err = ofReader.DumpGroups(ovsIP, ovsPort)
 	//if error was occured we return
 	if err != nil {
-		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString)
+		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", lines)
 		return
 	}
 	//if command was succesfull we further parse the output
-
-	lines = strings.Split(outString, "\n")
-	//skip the first and last lines, since it is just a response header and an empty line
-	lines = lines[1:(len(lines) - 1)]
 	groupEntries := make([]Group, len(lines))
 	for i, entry := range lines {
 		re := regexp.MustCompile("")
@@ -307,20 +287,12 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 		groupEntries[i].Buckets = bucketEntries
 	}
 
-	//creating ovs-ofctl command for group-stats
-	cmd = exec.Command("ovs-ofctl", "-O", "openflow13", "dump-group-stats", "tcp:"+ovsIP+":"+ovsPort)
-	out, err = cmd.Output()
-	outString = string(out)
+	lines, err = ofReader.DumpGroupStats(ovsIP, ovsPort)
 	//if error was occured we return
 	if err != nil {
-		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", outString)
+		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", lines)
 		return
 	}
-	//if command was succesfull we further parse the output
-
-	lines = strings.Split(outString, "\n")
-	//skip the first and last lines, since it is just a response header and an empty line
-	lines = lines[1:(len(lines) - 1)]
 	for _, entry := range lines {
 		re := regexp.MustCompile("")
 
