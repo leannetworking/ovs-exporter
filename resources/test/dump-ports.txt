@@ -1,0 +1,39 @@
+OFPST_PORT reply (xid=0x2): 19 ports
+  port LOCAL: rx pkts=0, bytes=0, drop=1157, errs=0, frame=0, over=0, crc=0
+           tx pkts=0, bytes=0, drop=0, errs=0, coll=0
+  port  8: rx pkts=26, bytes=2416, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=19, bytes=2156, drop=0, errs=0, coll=0
+  port 10: rx pkts=8, bytes=760, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port 14: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port 18: rx pkts=16, bytes=1536, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=9, bytes=726, drop=0, errs=0, coll=0
+  port 17: rx pkts=16, bytes=1536, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=9, bytes=726, drop=0, errs=0, coll=0
+  port 11: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=10, bytes=796, drop=0, errs=0, coll=0
+  port 13: rx pkts=34, bytes=3162, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port 16: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port  5: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port  9: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port 12: rx pkts=8, bytes=752, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port 15: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port  7: rx pkts=22, bytes=2112, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port  6: rx pkts=12, bytes=1128, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port  4: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=11, bytes=866, drop=0, errs=0, coll=0
+  port  1: rx pkts=0, bytes=0, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=0, bytes=0, drop=0, errs=0, coll=0
+  port  2: rx pkts=585, bytes=49290, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=41, bytes=3403, drop=0, errs=0, coll=0
+  port  3: rx pkts=595, bytes=50968, drop=0, errs=0, frame=0, over=0, crc=0
+           tx pkts=49, bytes=4135, drop=0, errs=0, coll=0

@@ -1,0 +1,16 @@
+OFPST_GROUP reply (OF1.3) (xid=0x2):
+ group_id=1011,duration=113.489s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0,bucket1:packet_count=0,byte_count=0,bucket2:packet_count=0,byte_count=0
+ group_id=1013,duration=87.005s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1004,duration=142.068s,ref_count=1,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1014,duration=56.481s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1002,duration=153.283s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1003,duration=147.180s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1001,duration=638.372s,ref_count=1,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1008,duration=126.376s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0,bucket1:packet_count=0,byte_count=0
+ group_id=1006,duration=132.689s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1007,duration=131.596s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0,bucket1:packet_count=0,byte_count=0
+ group_id=1009,duration=123.263s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1000,duration=638.372s,ref_count=1,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1010,duration=119.089s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1005,duration=135.980s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
+ group_id=1012,duration=94.307s,ref_count=0,packet_count=0,byte_count=0,bucket0:packet_count=0,byte_count=0
