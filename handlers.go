@@ -14,7 +14,11 @@ var ofReader OvsOfStatReader = ofcli{}
 
 var FlowLine *regexp.Regexp = regexp.MustCompile("cookie=(?P<cookie>[^,]*), duration=(?P<duration>[^,]*)s, table=(?P<table>[^,]*), n_packets=(?P<packets>[^,]*), n_bytes=(?P<bytes>[^,]*),( idle_timeout=(?P<idle_timeout>[^,]*),)? idle_age=(?P<idle_age>[^,]*), priority=(?P<priority>[^,]*)(,(?P<match>[^ ]*))? actions=(?P<actions>.*)")
 
-var PortLine *regexp.Regexp = regexp.MustCompile(`port\s(?P<port>[^:]*):\srx\spkts=(?P<rxpackets>[^,]*),\sbytes=(?P<rxbytes>[^,]*),\sdrop=(?P<rxdrops>[^,]*),\serrs=(?P<rxerrors>[^,]*),\sframe=(?P<rxframerr>[^,]*),\sover=(?P<rxoverruns>[^,]*),\scrc=(?P<rxcrcerrors>[^,]*)\s.*tx\spkts=(?P<txpackets>[^,]*),\sbytes=(?P<txbytes>[^,]*),\sdrop=(?P<txdrops>[^,]*),\serrs=(?P<txerrors>[^,]*),\scoll=(?P<txcollisions>.*)`)
+var PortLine *regexp.Regexp = regexp.MustCompile(`port\s*(?P<port>[^:]*):\srx\spkts=(?P<rxpackets>[^,]*),\sbytes=(?P<rxbytes>[^,]*),\sdrop=(?P<rxdrops>[^,]*),\serrs=(?P<rxerrors>[^,]*),\sframe=(?P<rxframerr>[^,]*),\sover=(?P<rxoverruns>[^,]*),\scrc=(?P<rxcrcerrors>[^,]*)\s.*tx\spkts=(?P<txpackets>[^,]*),\sbytes=(?P<txbytes>[^,]*),\sdrop=(?P<txdrops>[^,]*),\serrs=(?P<txerrors>[^,]*),\scoll=(?P<txcollisions>.*)`)
+
+var GroupsLine *regexp.Regexp = regexp.MustCompile(`group_id=(?P<groupid>.*?),\s*type=(?P<type>[^,]*),bucket=(?P<buckets>.*$)`)
+
+var BucketAction *regexp.Regexp = regexp.MustCompile("actions=(.*?),?$")
 
 func getRegexpMap(match []string, names []string) map[string]string {
 	result := make(map[string]string, len(names))
@@ -62,6 +66,29 @@ func parseOpenFlowPortDumpLine(line string) Port {
 		TxCollisions: result["txcollisions"],
 	}
 	return port
+}
+
+func parseOpenFlowGroupsDumpLine(line string) Group {
+	match := GroupsLine.FindStringSubmatch(line)
+	result := getRegexpMap(match, GroupsLine.SubexpNames())
+
+	group := Group{
+		GroupId:   result["groupid"],
+		GroupType: result["type"],
+	}
+
+	//Split the group line into buckets
+	buckets := strings.Split(result["buckets"], "bucket=")
+	bucketEntries := make([]Bucket, len(buckets))
+	for idx, bucket := range buckets {
+		subMatch := BucketAction.FindStringSubmatch(bucket)
+		if len(subMatch) > 1 {
+			bucketEntries[idx].Actions = subMatch[1]
+		}
+	}
+
+	group.Buckets = bucketEntries
+	return group
 }
 
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
@@ -220,34 +247,8 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	//if command was succesfull we further parse the output
 	groupEntries := make([]Group, len(lines))
-	for i, entry := range lines {
-		re := regexp.MustCompile("")
-
-		//Group Type
-		re = regexp.MustCompile("group_id=(.*?),")
-		subMatch := re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			groupEntries[i].GroupId = subMatch[1]
-		}
-
-		//Group Type
-		re = regexp.MustCompile("type=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			groupEntries[i].GroupType = subMatch[1]
-		}
-
-		//Split the group line into buckets
-		buckets := strings.Split(entry, "bucket=")
-		bucketEntries := make([]Bucket, len(buckets)-1)
-		for j := 1; j < len(buckets); j++ {
-			re = regexp.MustCompile("actions=(.*?),?$")
-			subMatch = re.FindStringSubmatch(buckets[j])
-			if len(subMatch) > 1 {
-				bucketEntries[j-1].Actions = subMatch[1]
-			}
-		}
-		groupEntries[i].Buckets = bucketEntries
+	for i, line := range lines {
+		groupEntries[i] = parseOpenFlowGroupsDumpLine(line)
 	}
 
 	lines, err = ofReader.DumpGroupStats(ovsIP, ovsPort)
