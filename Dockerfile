@@ -1,12 +1,34 @@
-FROM ubuntu:16.04
+FROM alpine:3.9 as ovsbuild
+
+# Install openvswitch to get the ovs-ofctl binary
+RUN apk add --update --no-cache openvswitch
+
+FROM golang:1.12-alpine3.9 as gobuild
+
+RUN apk add --update --no-cache git
+
+#add the working directory
+ADD . /root/ovs-exporter
+
+ENV GOPATH=/root/go
+
+#build the GO binary
+RUN cd /root/ovs-exporter \ 
+    && go get -d \
+    && go build .
+
+FROM alpine:3.9 
 
 MAINTAINER "LeanNet" <info@leannet.eu>
-# Containerize the Prometheus ovs-exporter 
 
-RUN apt-get update 
-RUN apt-get install -y openvswitch-common
+#add ovs-ofctl dependecies
+RUN apk add --update --no-cache libcap-ng libssl1.1
 
-COPY ovs-exporter ./
-RUN chmod 744 ovs-exporter
+#copy the ovs-ofctl binary
+COPY --from=ovsbuild /usr/bin/ovs-ofctl /usr/bin/ovs-ofctl
+
+#copy the complied ovs-exporter binary
+COPY --from=gobuild /root/ovs-exporter/ovs-exporter ./
 
 ENTRYPOINT ["./ovs-exporter"]
+
