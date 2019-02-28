@@ -12,6 +12,57 @@ import (
 var ovsPort int = 16633
 var ofReader OvsOfStatReader = ofcli{}
 
+var FlowLine *regexp.Regexp = regexp.MustCompile("cookie=(?P<cookie>[^,]*), duration=(?P<duration>[^,]*)s, table=(?P<table>[^,]*), n_packets=(?P<packets>[^,]*), n_bytes=(?P<bytes>[^,]*),( idle_timeout=(?P<idle_timeout>[^,]*),)? idle_age=(?P<idle_age>[^,]*), priority=(?P<priority>[^,]*)(,(?P<match>[^ ]*))? actions=(?P<actions>.*)")
+
+var PortLine *regexp.Regexp = regexp.MustCompile(`port\s(?P<port>[^:]*):\srx\spkts=(?P<rxpackets>[^,]*),\sbytes=(?P<rxbytes>[^,]*),\sdrop=(?P<rxdrops>[^,]*),\serrs=(?P<rxerrors>[^,]*),\sframe=(?P<rxframerr>[^,]*),\sover=(?P<rxoverruns>[^,]*),\scrc=(?P<rxcrcerrors>[^,]*)\s.*tx\spkts=(?P<txpackets>[^,]*),\sbytes=(?P<txbytes>[^,]*),\sdrop=(?P<txdrops>[^,]*),\serrs=(?P<txerrors>[^,]*),\scoll=(?P<txcollisions>.*)`)
+
+func getRegexpMap(match []string, names []string) map[string]string {
+	result := make(map[string]string, len(names))
+	for i, name := range names {
+		result[name] = match[i]
+	}
+	return result
+}
+
+func parseOpenFlowFlowDumpLine(line string) Flow {
+	match := FlowLine.FindStringSubmatch(line)
+	result := getRegexpMap(match, FlowLine.SubexpNames())
+	flow := Flow{
+		Cookie:      result["cookie"],
+		Duration:    result["duration"],
+		Table:       result["table"],
+		Packets:     result["packets"],
+		Bytes:       result["bytes"],
+		IdleTimeout: result["idle_timeout"],
+		IdleAge:     result["idle_age"],
+		Priority:    result["priority"],
+		Match:       result["match"],
+		Action:      result["actions"],
+	}
+	return flow
+}
+
+func parseOpenFlowPortDumpLine(line string) Port {
+	line = strings.Replace(line, "=?", "=0", -1)
+	match := PortLine.FindStringSubmatch(line)
+	result := getRegexpMap(match, PortLine.SubexpNames())
+	port := Port{
+		PortNumber:   result["port"],
+		RxPackets:    result["rxpackets"],
+		TxPackets:    result["txpackets"],
+		RxBytes:      result["rxbytes"],
+		TxBytes:      result["txbytes"],
+		RxDrops:      result["rxdrops"],
+		TxDrops:      result["txdrops"],
+		RxErrors:     result["rxerrors"],
+		TxErrors:     result["txerrors"],
+		RxFrameErr:   result["rxframerr"],
+		RxOverruns:   result["rxoverruns"],
+		RxCrcErrors:  result["rxcrcerrors"],
+		TxCollisions: result["txcollisions"],
+	}
+	return port
+}
 
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	ovsIP := r.URL.Query()["target"][0]
@@ -29,72 +80,7 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	//if command was succesfull we further parse the output
 	flowEntries := make([]Flow, len(lines))
 	for i, entry := range lines {
-		re := regexp.MustCompile("")
-
-		//Cookie
-		re = regexp.MustCompile("cookie=(.*?),")
-		subMatch := re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Cookie = subMatch[1]
-		}
-
-		//Duration
-		re = regexp.MustCompile("duration=(.*?)s,")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Duration = subMatch[1]
-		}
-
-		//Table
-		re = regexp.MustCompile("table=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Table = subMatch[1]
-		}
-
-		//Packets
-		re = regexp.MustCompile("packets=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Packets = subMatch[1]
-		}
-
-		//Bytes
-		re = regexp.MustCompile("bytes=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Bytes = subMatch[1]
-		}
-
-		//Idle Timeout
-		re = regexp.MustCompile("idle_timeout=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].IdleTimeout = subMatch[1]
-		}
-
-		//Idle Age
-		re = regexp.MustCompile("idle_age=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].IdleAge = subMatch[1]
-		}
-
-		//Priority & Match rule
-		re = regexp.MustCompile("priority=(.*?),(.*?) ")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 2 {
-			flowEntries[i].Priority = subMatch[1]
-			flowEntries[i].Match = subMatch[2]
-		}
-
-		//Action
-		re = regexp.MustCompile("actions=(.*)")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Action = subMatch[1]
-		}
-
+		flowEntries[i] = parseOpenFlowFlowDumpLine(entry)
 	}
 
 	//Creating Prometheus compatible output for:
@@ -161,30 +147,7 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	portEntries := make([]Port, int(len(lines)/2))
 	for i := 0; i < len(lines); i += 2 {
 		twoLines := lines[i] + lines[i+1]
-
-		//Searching every entry in one line as the following (there is no new line charachter between them):
-		//  port 1: rx pkts=1148284, bytes=76073652, drop=0, errs=0, frame=0, over=0, crc=0
-		//          tx pkts=1814122, bytes=90439143776, drop=0, errs=0, coll=0
-		re := regexp.MustCompile("port +(.*?): rx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), frame=(.*?), over=(.*?), crc=(.*?) .*tx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), coll=(.*)")
-		subMatch := re.FindStringSubmatch(twoLines)
-		if len(subMatch) > 13 {
-			portEntries[int(i/2)].PortNumber = noQuestionMark(subMatch[1])
-			portEntries[int(i/2)].RxPackets = noQuestionMark(subMatch[2])
-			portEntries[int(i/2)].RxBytes = noQuestionMark(subMatch[3])
-			portEntries[int(i/2)].RxDrops = noQuestionMark(subMatch[4])
-			portEntries[int(i/2)].RxErrors = noQuestionMark(subMatch[5])
-			portEntries[int(i/2)].RxFrameErr = noQuestionMark(subMatch[6])
-			portEntries[int(i/2)].RxOverruns = noQuestionMark(subMatch[7])
-			portEntries[int(i/2)].RxCrcErrors = noQuestionMark(subMatch[8])
-			portEntries[int(i/2)].TxPackets = noQuestionMark(subMatch[9])
-			portEntries[int(i/2)].TxBytes = noQuestionMark(subMatch[10])
-			portEntries[int(i/2)].TxDrops = noQuestionMark(subMatch[11])
-			portEntries[int(i/2)].TxErrors = noQuestionMark(subMatch[12])
-			portEntries[int(i/2)].TxCollisions = noQuestionMark(subMatch[13])
-		} else {
-			fmt.Fprintln(w, "Output is: ", subMatch, twoLines)
-			return
-		}
+		portEntries[int(i/2)] = parseOpenFlowPortDumpLine(twoLines)
 	}
 
 	//Creating Prometheus compatible output for every stat with portNumber identifyer:
