@@ -273,7 +273,6 @@ groupPackets{groupId="1000",groupType="select"} 0
 groupPackets{groupId="1010",groupType="select"} 0
 groupPackets{groupId="1005",groupType="select"} 0
 groupPackets{groupId="1012",groupType="select"} 0
-groupPackets{groupId="",groupType=""} 
 # HELP groupBytes The number of bytes that was sent by a given group
 # TYPE groupBytes counter
 groupBytes{groupId="1011",groupType="select"} 0
@@ -291,7 +290,6 @@ groupBytes{groupId="1000",groupType="select"} 0
 groupBytes{groupId="1010",groupType="select"} 0
 groupBytes{groupId="1005",groupType="select"} 0
 groupBytes{groupId="1012",groupType="select"} 0
-groupBytes{groupId="",groupType=""} 
 # HELP groupDuration The number of seconds passed since the group entry was added
 # TYPE groupDuration gauge
 groupDuration{groupId="1011",groupType="select"} 113.489
@@ -309,7 +307,6 @@ groupDuration{groupId="1000",groupType="select"} 638.372
 groupDuration{groupId="1010",groupType="select"} 119.089
 groupDuration{groupId="1005",groupType="select"} 135.980
 groupDuration{groupId="1012",groupType="select"} 94.307
-groupDuration{groupId="",groupType=""} 
 # HELP groupBucketPackets The number of packet that was sent by a given group bucket
 # TYPE groupBucketPackets counter
 groupBucketPackets{groupId="1011",groupType="select",bucketActions="set_field:10.244.7.18->ip_dst,set_field:8079->tcp_dst,resubmit(,4)"} 0
