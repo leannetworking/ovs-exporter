@@ -22,7 +22,7 @@ func fileToLines(fname string) ([]string, error) {
 	}
 	outString := string(content)
 	lines := strings.Split(outString, "\n")
-	return lines, nil
+	return lines[1:(len(lines) - 1)], nil
 }
 
 func (o ofdummy) DumpFlows(ip string, port int) ([]string, error) {

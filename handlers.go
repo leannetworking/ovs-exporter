@@ -12,6 +12,111 @@ import (
 var ovsPort int = 16633
 var ofReader OvsOfStatReader = ofcli{}
 
+var FlowLine *regexp.Regexp = regexp.MustCompile("cookie=(?P<cookie>[^,]*), duration=(?P<duration>[^,]*)s, table=(?P<table>[^,]*), n_packets=(?P<packets>[^,]*), n_bytes=(?P<bytes>[^,]*),( idle_timeout=(?P<idle_timeout>[^,]*),)? idle_age=(?P<idle_age>[^,]*), priority=(?P<priority>[^,]*)(,(?P<match>[^ ]*))? actions=(?P<actions>.*)")
+
+var PortLine *regexp.Regexp = regexp.MustCompile(`port\s*(?P<port>[^:]*):\srx\spkts=(?P<rxpackets>[^,]*),\sbytes=(?P<rxbytes>[^,]*),\sdrop=(?P<rxdrops>[^,]*),\serrs=(?P<rxerrors>[^,]*),\sframe=(?P<rxframerr>[^,]*),\sover=(?P<rxoverruns>[^,]*),\scrc=(?P<rxcrcerrors>[^,]*)\s.*tx\spkts=(?P<txpackets>[^,]*),\sbytes=(?P<txbytes>[^,]*),\sdrop=(?P<txdrops>[^,]*),\serrs=(?P<txerrors>[^,]*),\scoll=(?P<txcollisions>.*)`)
+
+var GroupsLine *regexp.Regexp = regexp.MustCompile(`group_id=(?P<groupid>.*?),\s*type=(?P<type>[^,]*),bucket=(?P<buckets>.*$)`)
+
+var BucketAction *regexp.Regexp = regexp.MustCompile("actions=(.*?),?$")
+
+var GroupStatsLine *regexp.Regexp = regexp.MustCompile(`group_id=(?P<groupid>.*?),duration=(?P<duration>[^,]*)s,(?P<counts>.*$)`)
+
+var CountLine *regexp.Regexp = regexp.MustCompile("ref_count=(?P<ref_count>[0-9]+),packet_count=(?P<packet_count>[0-9]+),byte_count=(?P<byte_count>[0-9]+).*")
+
+func getRegexpMap(match []string, names []string) map[string]string {
+	result := make(map[string]string, len(names))
+	for i, name := range names {
+		result[name] = match[i]
+	}
+	return result
+}
+
+func parseOpenFlowFlowDumpLine(line string) Flow {
+	match := FlowLine.FindStringSubmatch(line)
+	result := getRegexpMap(match, FlowLine.SubexpNames())
+	flow := Flow{
+		Cookie:      result["cookie"],
+		Duration:    result["duration"],
+		Table:       result["table"],
+		Packets:     result["packets"],
+		Bytes:       result["bytes"],
+		IdleTimeout: result["idle_timeout"],
+		IdleAge:     result["idle_age"],
+		Priority:    result["priority"],
+		Match:       result["match"],
+		Action:      result["actions"],
+	}
+	return flow
+}
+
+func parseOpenFlowPortDumpLine(line string) Port {
+	line = strings.Replace(line, "=?", "=0", -1)
+	match := PortLine.FindStringSubmatch(line)
+	result := getRegexpMap(match, PortLine.SubexpNames())
+	port := Port{
+		PortNumber:   result["port"],
+		RxPackets:    result["rxpackets"],
+		TxPackets:    result["txpackets"],
+		RxBytes:      result["rxbytes"],
+		TxBytes:      result["txbytes"],
+		RxDrops:      result["rxdrops"],
+		TxDrops:      result["txdrops"],
+		RxErrors:     result["rxerrors"],
+		TxErrors:     result["txerrors"],
+		RxFrameErr:   result["rxframerr"],
+		RxOverruns:   result["rxoverruns"],
+		RxCrcErrors:  result["rxcrcerrors"],
+		TxCollisions: result["txcollisions"],
+	}
+	return port
+}
+
+func parseOpenFlowGroupsDumpLine(line string) Group {
+	match := GroupsLine.FindStringSubmatch(line)
+	result := getRegexpMap(match, GroupsLine.SubexpNames())
+
+	group := Group{
+		GroupId:   result["groupid"],
+		GroupType: result["type"],
+	}
+
+	//Split the group line into buckets
+	buckets := strings.Split(result["buckets"], "bucket=")
+	bucketEntries := make([]Bucket, len(buckets))
+	for idx, bucket := range buckets {
+		subMatch := BucketAction.FindStringSubmatch(bucket)
+		if len(subMatch) > 1 {
+			bucketEntries[idx].Actions = subMatch[1]
+		}
+	}
+
+	group.Buckets = bucketEntries
+	return group
+}
+
+func parseOpenFlowGroupStatsDumpLine(line string, groupIdMap map[string]*Group) {
+	match := GroupStatsLine.FindStringSubmatch(line)
+	result := getRegexpMap(match, GroupStatsLine.SubexpNames())
+
+	var group *Group = groupIdMap[result["groupid"]]
+	group.Duration = result["duration"]
+	bucketCounts := strings.Split(result["counts"], ":")
+
+	//The 0th element in this split should contain the aggregated packet/byte counter for the whole group
+	subMatch := CountLine.FindStringSubmatch(bucketCounts[0])
+	subResult := getRegexpMap(subMatch, CountLine.SubexpNames())
+	group.Packets = subResult["packet_count"]
+	group.Bytes = subResult["byte_count"]
+
+	//The others should contain bucket data
+	for j := 1; j < len(bucketCounts); j++ {
+		bucketMatch := CountLine.FindStringSubmatch(bucketCounts[0])
+		bucketResult := getRegexpMap(bucketMatch, CountLine.SubexpNames())
+		group.Buckets[j-1].Packets = bucketResult["packet_count"]
+		group.Buckets[j-1].Bytes = bucketResult["byte_count"]
+	}
+}
 
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	ovsIP := r.URL.Query()["target"][0]
@@ -29,72 +134,7 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	//if command was succesfull we further parse the output
 	flowEntries := make([]Flow, len(lines))
 	for i, entry := range lines {
-		re := regexp.MustCompile("")
-
-		//Cookie
-		re = regexp.MustCompile("cookie=(.*?),")
-		subMatch := re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Cookie = subMatch[1]
-		}
-
-		//Duration
-		re = regexp.MustCompile("duration=(.*?)s,")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Duration = subMatch[1]
-		}
-
-		//Table
-		re = regexp.MustCompile("table=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Table = subMatch[1]
-		}
-
-		//Packets
-		re = regexp.MustCompile("packets=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Packets = subMatch[1]
-		}
-
-		//Bytes
-		re = regexp.MustCompile("bytes=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Bytes = subMatch[1]
-		}
-
-		//Idle Timeout
-		re = regexp.MustCompile("idle_timeout=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].IdleTimeout = subMatch[1]
-		}
-
-		//Idle Age
-		re = regexp.MustCompile("idle_age=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].IdleAge = subMatch[1]
-		}
-
-		//Priority & Match rule
-		re = regexp.MustCompile("priority=(.*?),(.*?) ")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 2 {
-			flowEntries[i].Priority = subMatch[1]
-			flowEntries[i].Match = subMatch[2]
-		}
-
-		//Action
-		re = regexp.MustCompile("actions=(.*)")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			flowEntries[i].Action = subMatch[1]
-		}
-
+		flowEntries[i] = parseOpenFlowFlowDumpLine(entry)
 	}
 
 	//Creating Prometheus compatible output for:
@@ -161,30 +201,7 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	portEntries := make([]Port, int(len(lines)/2))
 	for i := 0; i < len(lines); i += 2 {
 		twoLines := lines[i] + lines[i+1]
-
-		//Searching every entry in one line as the following (there is no new line charachter between them):
-		//  port 1: rx pkts=1148284, bytes=76073652, drop=0, errs=0, frame=0, over=0, crc=0
-		//          tx pkts=1814122, bytes=90439143776, drop=0, errs=0, coll=0
-		re := regexp.MustCompile("port +(.*?): rx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), frame=(.*?), over=(.*?), crc=(.*?) .*tx pkts=(.*?), bytes=(.*?), drop=(.*?), errs=(.*?), coll=(.*)")
-		subMatch := re.FindStringSubmatch(twoLines)
-		if len(subMatch) > 13 {
-			portEntries[int(i/2)].PortNumber = noQuestionMark(subMatch[1])
-			portEntries[int(i/2)].RxPackets = noQuestionMark(subMatch[2])
-			portEntries[int(i/2)].RxBytes = noQuestionMark(subMatch[3])
-			portEntries[int(i/2)].RxDrops = noQuestionMark(subMatch[4])
-			portEntries[int(i/2)].RxErrors = noQuestionMark(subMatch[5])
-			portEntries[int(i/2)].RxFrameErr = noQuestionMark(subMatch[6])
-			portEntries[int(i/2)].RxOverruns = noQuestionMark(subMatch[7])
-			portEntries[int(i/2)].RxCrcErrors = noQuestionMark(subMatch[8])
-			portEntries[int(i/2)].TxPackets = noQuestionMark(subMatch[9])
-			portEntries[int(i/2)].TxBytes = noQuestionMark(subMatch[10])
-			portEntries[int(i/2)].TxDrops = noQuestionMark(subMatch[11])
-			portEntries[int(i/2)].TxErrors = noQuestionMark(subMatch[12])
-			portEntries[int(i/2)].TxCollisions = noQuestionMark(subMatch[13])
-		} else {
-			fmt.Fprintln(w, "Output is: ", subMatch, twoLines)
-			return
-		}
+		portEntries[int(i/2)] = parseOpenFlowPortDumpLine(twoLines)
 	}
 
 	//Creating Prometheus compatible output for every stat with portNumber identifyer:
@@ -256,35 +273,12 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//if command was succesfull we further parse the output
-	groupEntries := make([]Group, len(lines))
-	for i, entry := range lines {
-		re := regexp.MustCompile("")
-
-		//Group Type
-		re = regexp.MustCompile("group_id=(.*?),")
-		subMatch := re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			groupEntries[i].GroupId = subMatch[1]
-		}
-
-		//Group Type
-		re = regexp.MustCompile("type=(.*?),")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			groupEntries[i].GroupType = subMatch[1]
-		}
-
-		//Split the group line into buckets
-		buckets := strings.Split(entry, "bucket=")
-		bucketEntries := make([]Bucket, len(buckets)-1)
-		for j := 1; j < len(buckets); j++ {
-			re = regexp.MustCompile("actions=(.*?),?$")
-			subMatch = re.FindStringSubmatch(buckets[j])
-			if len(subMatch) > 1 {
-				bucketEntries[j-1].Actions = subMatch[1]
-			}
-		}
-		groupEntries[i].Buckets = bucketEntries
+	groupEntries := make([]*Group, len(lines))
+	groupIdMap := make(map[string]*Group)
+	for i, line := range lines {
+		groupEntry := parseOpenFlowGroupsDumpLine(line)
+		groupEntries[i] = &groupEntry
+		groupIdMap[groupEntry.GroupId] = &groupEntry
 	}
 
 	lines, err = ofReader.DumpGroupStats(ovsIP, ovsPort)
@@ -293,58 +287,8 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Error is: ", err, "\nOutput was:", lines)
 		return
 	}
-	for _, entry := range lines {
-		re := regexp.MustCompile("")
-
-		groupIndex := -1
-
-		//Get the matching Group ID
-		re = regexp.MustCompile("group_id=(.*?),")
-		subMatch := re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			for j, group := range groupEntries {
-				if group.GroupId == subMatch[1] {
-					groupIndex = j
-				}
-			}
-		}
-
-		//Duration
-		re = regexp.MustCompile("duration=(.*?)s,")
-		subMatch = re.FindStringSubmatch(entry)
-		if len(subMatch) > 1 {
-			groupEntries[groupIndex].Duration = subMatch[1]
-		}
-
-		//Bucket byte and packet stat
-		buckets := strings.Split(entry, ":")
-		//The 0th element in this split should contain the aggregated packet/byte counter for the whole group
-		re = regexp.MustCompile("packet_count=([0-9]+)")
-		subMatch = re.FindStringSubmatch(buckets[0])
-		if len(subMatch) > 1 {
-			groupEntries[groupIndex].Packets = subMatch[1]
-		}
-
-		re = regexp.MustCompile("byte_count=([0-9]+)")
-		subMatch = re.FindStringSubmatch(buckets[0])
-		if len(subMatch) > 1 {
-			groupEntries[groupIndex].Bytes = subMatch[1]
-		}
-
-		//The others should contain bucket data
-		for j := 1; j < len(buckets); j++ {
-			re = regexp.MustCompile("packet_count=([0-9]+)")
-			subMatch = re.FindStringSubmatch(buckets[j])
-			if len(subMatch) > 1 {
-				groupEntries[groupIndex].Buckets[j-1].Packets = subMatch[1]
-			}
-
-			re = regexp.MustCompile("byte_count=([0-9]+)")
-			subMatch = re.FindStringSubmatch(buckets[j])
-			if len(subMatch) > 1 {
-				groupEntries[groupIndex].Buckets[j-1].Bytes = subMatch[1]
-			}
-		}
+	for _, line := range lines {
+		parseOpenFlowGroupStatsDumpLine(line, groupIdMap)
 	}
 
 	//Creating Prometheus compatible output for every group stat with groupId label:
@@ -410,11 +354,4 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-}
-
-func noQuestionMark(s string) string {
-	if s == "?" {
-		return "0"
-	}
-	return s
 }
