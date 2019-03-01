@@ -19,9 +19,9 @@ import (
 var listenPort string = ":8081"
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	target := r.URL.Query()["target"][0]
+	target := r.URL.Query().Get("target")
 	if target == "" {
-		http.Error(w, "Bad request!\nCorrect format is: http://<IP>:<Port>/flows?target=<targetIP>", 400)
+		http.Error(w, "Bad request!\nCorrect format is: http://"+r.Host+"/flows?target=<targetIP>", 400)
 		return
 	}
 	c := collector{ip: target, port: ovsPort}
