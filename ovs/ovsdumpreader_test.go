@@ -24,6 +24,8 @@ func TestParseOpenFlowFlowDumpLine(t *testing.T) {
 	}{
 		{"cookie=0x0, duration=588.593s, table=0, n_packets=0, n_bytes=0, idle_age=588, priority=41000,arp actions=NORMAL",
 			Flow{"0x0", 588.593, "0", 0, 0, "", 588, "41000", "arp", "NORMAL"}},
+		{"dummy line",
+			Flow{"", 0.0, "", 0, 0, "", 0, "", "", ""}},
 	}
 
 	for _, test := range tests {

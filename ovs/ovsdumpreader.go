@@ -29,9 +29,9 @@ var (
 )
 
 func getRegexpMap(match []string, names []string) map[string]string {
-	result := make(map[string]string, len(names))
-	for i, name := range names {
-		result[name] = match[i]
+	result := make(map[string]string, len(match))
+	for i, m := range match {
+		result[names[i]] = m
 	}
 	return result
 }
