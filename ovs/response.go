@@ -1,4 +1,4 @@
-package main
+package ovs
 
 //This file contains the JSON response object (structs)
 

@@ -1,30 +1,17 @@
 package main
 
 import (
-	"regexp"
-	"strconv"
-	"strings"
-
+	"github.com/leannetworking/ovs-exporter/ovs"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type collector struct {
-	ip   string
-	port int
+type OvsPromCollector struct {
+	ip        string
+	port      int
+	ovsReader ovs.OvsStatReader
 }
 
 var (
-	//the passive TCP port where OVS entries are listening
-	//for OpenFlow commands
-	ovsPort        int             = 16633
-	ofReader       OvsOfStatReader = ofcli{}
-	FlowLine       *regexp.Regexp  = regexp.MustCompile("cookie=(?P<cookie>[^,]*), duration=(?P<duration>[^,]*)s, table=(?P<table>[^,]*), n_packets=(?P<packets>[^,]*), n_bytes=(?P<bytes>[^,]*),( idle_timeout=(?P<idle_timeout>[^,]*),)? idle_age=(?P<idle_age>[^,]*), priority=(?P<priority>[^,]*)(,(?P<match>[^ ]*))? actions=(?P<actions>.*)")
-	PortLine       *regexp.Regexp  = regexp.MustCompile(`port\s*(?P<port>[^:]*):\srx\spkts=(?P<rxpackets>[^,]*),\sbytes=(?P<rxbytes>[^,]*),\sdrop=(?P<rxdrops>[^,]*),\serrs=(?P<rxerrors>[^,]*),\sframe=(?P<rxframerr>[^,]*),\sover=(?P<rxoverruns>[^,]*),\scrc=(?P<rxcrcerrors>[^,]*)\s.*tx\spkts=(?P<txpackets>[^,]*),\sbytes=(?P<txbytes>[^,]*),\sdrop=(?P<txdrops>[^,]*),\serrs=(?P<txerrors>[^,]*),\scoll=(?P<txcollisions>.*)`)
-	GroupsLine     *regexp.Regexp  = regexp.MustCompile(`group_id=(?P<groupid>.*?),\s*type=(?P<type>[^,]*),bucket=(?P<buckets>.*$)`)
-	BucketAction   *regexp.Regexp  = regexp.MustCompile("actions=(.*?),?$")
-	GroupStatsLine *regexp.Regexp  = regexp.MustCompile(`group_id=(?P<groupid>.*?),duration=(?P<duration>[^,]*)s,(?P<counts>.*$)`)
-	CountLine      *regexp.Regexp  = regexp.MustCompile("ref_count=(?P<ref_count>[0-9]+),packet_count=(?P<packet_count>[0-9]+),byte_count=(?P<byte_count>[0-9]+).*")
-
 	flowPacketsDesc = prometheus.NewDesc(
 		"flowPackets",
 		"The number of packets matched for the given OpenFlow entry.",
@@ -114,136 +101,23 @@ var (
 		"The number of bytes that was sent by a given group bucket",
 		[]string{"groupId", "groupType", "bucketActions"},
 		nil)
+
+	urlParsingErrorDesc = prometheus.NewDesc(
+		"ovs_error",
+		"Error scraping target. Correct format is: http://<IP>:<Port>/flows?target=<targetIP>",
+		nil, nil)
 )
 
-func getRegexpMap(match []string, names []string) map[string]string {
-	result := make(map[string]string, len(names))
-	for i, name := range names {
-		result[name] = match[i]
-	}
-	return result
-}
-
-func parseOpenFlowFlowDumpLine(line string) Flow {
-	match := FlowLine.FindStringSubmatch(line)
-	result := getRegexpMap(match, FlowLine.SubexpNames())
-	duration, _ := strconv.Atoi(result["duration"])
-	packets, _ := strconv.Atoi(result["packets"])
-	bytes, _ := strconv.Atoi(result["bytes"])
-	idleAge, _ := strconv.Atoi(result["idle_age"])
-
-	flow := Flow{
-		Cookie:      result["cookie"],
-		Duration:    duration,
-		Table:       result["table"],
-		Packets:     packets,
-		Bytes:       bytes,
-		IdleTimeout: result["idle_timeout"],
-		IdleAge:     idleAge,
-		Priority:    result["priority"],
-		Match:       result["match"],
-		Action:      result["actions"],
-	}
-	return flow
-}
-
-func parseOpenFlowPortDumpLine(line string) Port {
-	line = strings.Replace(line, "=?", "=0", -1)
-	match := PortLine.FindStringSubmatch(line)
-	result := getRegexpMap(match, PortLine.SubexpNames())
-	rxpackets, _ := strconv.Atoi(result["rxpackets"])
-	txpackets, _ := strconv.Atoi(result["txpackets"])
-	rxbytes, _ := strconv.Atoi(result["rxbytes"])
-	txbytes, _ := strconv.Atoi(result["txbytes"])
-	rxdrops, _ := strconv.Atoi(result["rxdrops"])
-	txdrops, _ := strconv.Atoi(result["txdrops"])
-
-	port := Port{
-		PortNumber:   result["port"],
-		RxPackets:    rxpackets,
-		TxPackets:    txpackets,
-		RxBytes:      rxbytes,
-		TxBytes:      txbytes,
-		RxDrops:      rxdrops,
-		TxDrops:      txdrops,
-		RxErrors:     result["rxerrors"],
-		TxErrors:     result["txerrors"],
-		RxFrameErr:   result["rxframerr"],
-		RxOverruns:   result["rxoverruns"],
-		RxCrcErrors:  result["rxcrcerrors"],
-		TxCollisions: result["txcollisions"],
-	}
-	return port
-}
-
-func parseOpenFlowGroupsDumpLine(line string) Group {
-	match := GroupsLine.FindStringSubmatch(line)
-	result := getRegexpMap(match, GroupsLine.SubexpNames())
-
-	group := Group{
-		GroupId:   result["groupid"],
-		GroupType: result["type"],
-	}
-
-	//Split the group line into buckets
-	buckets := strings.Split(result["buckets"], "bucket=")
-	bucketEntries := make([]Bucket, len(buckets))
-	for idx, bucket := range buckets {
-		subMatch := BucketAction.FindStringSubmatch(bucket)
-		if len(subMatch) > 1 {
-			bucketEntries[idx].Actions = subMatch[1]
-		}
-	}
-
-	group.Buckets = bucketEntries
-	return group
-}
-
-func parseOpenFlowGroupStatsDumpLine(line string, groupIdMap map[string]*Group) {
-	match := GroupStatsLine.FindStringSubmatch(line)
-	result := getRegexpMap(match, GroupStatsLine.SubexpNames())
-
-	var group *Group = groupIdMap[result["groupid"]]
-	group.Duration, _ = strconv.Atoi(result["duration"])
-	bucketCounts := strings.Split(result["counts"], ":")
-
-	//The 0th element in this split should contain the aggregated packet/byte counter for the whole group
-	subMatch := CountLine.FindStringSubmatch(bucketCounts[0])
-	subResult := getRegexpMap(subMatch, CountLine.SubexpNames())
-	group.Packets, _ = strconv.Atoi(subResult["packet_count"])
-	group.Bytes, _ = strconv.Atoi(subResult["byte_count"])
-
-	//The others should contain bucket data
-	for j := 1; j < len(bucketCounts); j++ {
-		bucketMatch := CountLine.FindStringSubmatch(bucketCounts[0])
-		bucketResult := getRegexpMap(bucketMatch, CountLine.SubexpNames())
-		group.Buckets[j-1].Packets, _ = strconv.Atoi(bucketResult["packet_count"])
-		group.Buckets[j-1].Bytes, _ = strconv.Atoi(bucketResult["byte_count"])
-	}
-}
-
 // Describe implements Prometheus.Collector.
-func (c collector) Describe(ch chan<- *prometheus.Desc) {
+func (c OvsPromCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- prometheus.NewDesc("dummy", "dummy", nil, nil)
 }
 
 // Collect implements Prometheus.Collector.
-func (c collector) Collect(ch chan<- prometheus.Metric) {
+func (c OvsPromCollector) Collect(ch chan<- prometheus.Metric) {
 	if c.ip == "" {
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovsof_error", "Error scraping target. Correct format is: http://<IP>:<Port>/flows?target=<targetIP>", nil, nil), nil)
+		ch <- prometheus.NewInvalidMetric(urlParsingErrorDesc, nil)
 		return
-	}
-
-	lines, err := ofReader.DumpFlows(c.ip, c.port)
-	//if error was occured we return
-	if err != nil {
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovsof_error", "Error parsing flow dump", nil, nil), err)
-		return
-	}
-	//if command was succesfull we further parse the output
-	flowEntries := make([]Flow, len(lines))
-	for i, entry := range lines {
-		flowEntries[i] = parseOpenFlowFlowDumpLine(entry)
 	}
 
 	//Creating Prometheus compatible output for:
@@ -252,7 +126,15 @@ func (c collector) Collect(ch chan<- prometheus.Metric) {
 	//	- age of the flow as "flowAge" type Gauge
 	//	- idle time as "flowIdleTime" type Gauge
 
+	flowEntries, err := c.ovsReader.Flows(c.ip, c.port)
+
+	if err != nil {
+		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovs_error", "Error parsing flow dump", nil, nil), err)
+		return
+	}
+
 	for _, entry := range flowEntries {
+
 		ch <- prometheus.MustNewConstMetric(
 			flowPacketsDesc,
 			prometheus.CounterValue,
@@ -290,19 +172,13 @@ func (c collector) Collect(ch chan<- prometheus.Metric) {
 			entry.Priority)
 	}
 
-	lines, err = ofReader.DumpPorts(c.ip, c.port)
+	portEntries, err := c.ovsReader.Ports(c.ip, c.port)
 	//if error was occured we return
 	if err != nil {
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovsof_error", "Error parsing port dump", nil, nil), err)
+		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovs_error", "Error parsing port dump", nil, nil), err)
 		return
 	}
 	//if command was succesfull we further parse the output
-	portEntries := make([]Port, int(len(lines)/2))
-	for i := 0; i < len(lines); i += 2 {
-		twoLines := lines[i] + lines[i+1]
-		portEntries[int(i/2)] = parseOpenFlowPortDumpLine(twoLines)
-	}
-
 	//Creating Prometheus compatible output for every stat with portNumber identifyer:
 	//	- number of packets recieved by the given OpenFlow port as "portRxPackets" type Counter
 	//	- number of packets sent by the given OpenFlow port as "portTxPackets" type Counter
@@ -312,6 +188,7 @@ func (c collector) Collect(ch chan<- prometheus.Metric) {
 	//	- number of packet drops in sending side by the given OpenFlow port as "portTxDrops" type Counter
 
 	for _, entry := range portEntries {
+
 		ch <- prometheus.MustNewConstMetric(
 			portRxPacketsDesc,
 			prometheus.CounterValue,
@@ -349,29 +226,11 @@ func (c collector) Collect(ch chan<- prometheus.Metric) {
 			entry.PortNumber)
 	}
 
-	lines, err = ofReader.DumpGroups(c.ip, c.port)
+	groupEntries, err := c.ovsReader.Groups(c.ip, c.port)
 	//if error was occured we return
 	if err != nil {
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovsof_error", "Error parsing group dump", nil, nil), err)
+		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovs_error", "Error parsing group dump", nil, nil), err)
 		return
-	}
-	//if command was succesfull we further parse the output
-	groupEntries := make([]*Group, len(lines))
-	groupIdMap := make(map[string]*Group)
-	for i, line := range lines {
-		groupEntry := parseOpenFlowGroupsDumpLine(line)
-		groupEntries[i] = &groupEntry
-		groupIdMap[groupEntry.GroupId] = &groupEntry
-	}
-
-	lines, err = ofReader.DumpGroupStats(c.ip, c.port)
-	//if error was occured we return
-	if err != nil {
-		ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("ovsof_error", "Error parsing group stat dump", nil, nil), err)
-		return
-	}
-	for _, line := range lines {
-		parseOpenFlowGroupStatsDumpLine(line, groupIdMap)
 	}
 
 	//Creating Prometheus compatible output for every group stat with groupId label:

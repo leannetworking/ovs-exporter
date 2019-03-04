@@ -1,4 +1,4 @@
-package main
+package ovs
 
 import (
 	"io/ioutil"
@@ -12,8 +12,7 @@ const (
 	GROUP_STATS = "resources/test/dump-group-stats.txt"
 )
 
-type ofdummy struct {
-}
+type OvsDumpSourceTest struct{}
 
 func fileToLines(fname string) ([]string, error) {
 	content, err := ioutil.ReadFile(fname)
@@ -22,21 +21,22 @@ func fileToLines(fname string) ([]string, error) {
 	}
 	outString := string(content)
 	lines := strings.Split(outString, "\n")
-	return lines[1:(len(lines) - 1)], nil
+	lines = lines[1:(len(lines) - 1)]
+	return lines, nil
 }
 
-func (o ofdummy) DumpFlows(ip string, port int) ([]string, error) {
+func (o OvsDumpSourceTest) DumpFlows(ip string, port int) ([]string, error) {
 	return fileToLines(FLOWS)
 }
 
-func (o ofdummy) DumpPorts(ip string, port int) ([]string, error) {
+func (o OvsDumpSourceTest) DumpPorts(ip string, port int) ([]string, error) {
 	return fileToLines(PORTS)
 }
 
-func (o ofdummy) DumpGroups(ip string, port int) ([]string, error) {
+func (o OvsDumpSourceTest) DumpGroups(ip string, port int) ([]string, error) {
 	return fileToLines(GROUPS)
 }
 
-func (o ofdummy) DumpGroupStats(ip string, port int) ([]string, error) {
+func (o OvsDumpSourceTest) DumpGroupStats(ip string, port int) ([]string, error) {
 	return fileToLines(GROUP_STATS)
 }

@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/leannetworking/ovs-exporter/ovs"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -24,7 +25,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request!\nCorrect format is: http://"+r.Host+"/flows?target=<targetIP>", 400)
 		return
 	}
-	c := collector{ip: target, port: ovsPort}
+	c := OvsPromCollector{
+		ip:        target,
+		port:      ovs.OvsDefaultPort,
+		ovsReader: ovs.CliDumpReader,
+	}
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(c)
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
