@@ -51,6 +51,11 @@ func TestParseOpenFlowFlowDumpLine(t *testing.T) {
 		{"cookie=0x0, duration=588.593s, table=0, n_packets=0, n_bytes=0, idle_age=588, priority=41000 actions=NORMAL",
 			Flow{"0x0", 588.593, "0", 0, 0, "", 588, "41000", "", "NORMAL"},
 			"Checking parsing when the optional <match> part is missing"},
+
+		//TODO: consider if this is a bug or feature
+		{"cookie=0x0, duration=NOTNUMBERs, table=0, n_packets=NOTNUMBER, n_bytes=NOTNUMBER, idle_age=NOTNUMBER, priority=41000 actions=NORMAL",
+			Flow{"0x0", 0, "0", 0, 0, "", 0, "41000", "", "NORMAL"},
+			"Checking non numerical parsings"},
 	}
 
 	for _, test := range tests {
