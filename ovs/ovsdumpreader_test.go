@@ -59,6 +59,7 @@ func TestParseOpenFlowFlowDumpLine(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		t.Log(test.testDesc)
 		res := parseOpenFlowFlowDumpLine(test.testLine)
 		if res != test.testResult {
 			t.Errorf("Failed to parse <%v> flow line. Expected: \n%+v\n got \n%+v",
