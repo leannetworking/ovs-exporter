@@ -4,8 +4,6 @@ package ovs
 
 //Written by Megyo @ LeanNet
 
-//import "time"
-
 type Flow struct {
 	Cookie      string `json:"cookie"`
 	Duration    int    `json:"duration"`
@@ -18,8 +16,6 @@ type Flow struct {
 	Match       string `json:"match"`
 	Action      string `json:"action"`
 }
-
-type Flows []Flow
 
 type Port struct {
 	PortNumber   string `json:"portnumber"`
@@ -37,8 +33,6 @@ type Port struct {
 	TxCollisions string `json:"txcollisions"`
 }
 
-type Ports []Port
-
 type Group struct {
 	GroupId   string   `json:"groupid"`
 	GroupType string   `json:"grouptype"`
@@ -54,5 +48,3 @@ type Bucket struct {
 	Bytes   int    `json:"bytes"`
 	Packets int    `json:"packets"`
 }
-
-type Groups []Group
