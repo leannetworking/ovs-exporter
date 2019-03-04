@@ -3,16 +3,23 @@ package ovs
 import "testing"
 
 func TestGetRegexpMap(t *testing.T) {
-	match := []string{"a", "b", "c"}
-	names := []string{"na", "nb", "nc"}
-	res := getRegexpMap(match, names)
+	tests := []struct {
+		match []string
+		names []string
+	}{
+		{[]string{"a", "b", "c"}, []string{"na", "nb", "nc"}},
+	}
 
-	for i, name := range names {
-		if res[name] != match[i] {
-			t.Errorf("RegexpMapper error. Assumed %s at res[%s] but got %s",
-				match[i],
-				name,
-				res[name])
+	for _, test := range tests {
+		res := getRegexpMap(test.match, test.names)
+
+		for i, name := range test.names {
+			if res[name] != test.match[i] {
+				t.Errorf("RegexpMapper error. Assumed %s at res[%s] but got %s",
+					test.match[i],
+					name,
+					res[name])
+			}
 		}
 	}
 }
