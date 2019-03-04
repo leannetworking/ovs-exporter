@@ -39,7 +39,7 @@ func getRegexpMap(match []string, names []string) map[string]string {
 func parseOpenFlowFlowDumpLine(line string) Flow {
 	match := flowLine.FindStringSubmatch(line)
 	result := getRegexpMap(match, flowLine.SubexpNames())
-	duration, _ := strconv.Atoi(result["duration"])
+	duration, _ := strconv.ParseFloat(result["duration"], 64)
 	packets, _ := strconv.Atoi(result["packets"])
 	bytes, _ := strconv.Atoi(result["bytes"])
 	idleAge, _ := strconv.Atoi(result["idle_age"])

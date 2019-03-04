@@ -5,16 +5,16 @@ package ovs
 //Written by Megyo @ LeanNet
 
 type Flow struct {
-	Cookie      string `json:"cookie"`
-	Duration    int    `json:"duration"`
-	Table       string `json:"table"`
-	Packets     int    `json:"packets"`
-	Bytes       int    `json:"bytes"`
-	IdleTimeout string `json:"idletimeout"`
-	IdleAge     int    `json:"idleage"`
-	Priority    string `json:"proirity"`
-	Match       string `json:"match"`
-	Action      string `json:"action"`
+	Cookie      string  `json:"cookie"`
+	Duration    float64 `json:"duration"`
+	Table       string  `json:"table"`
+	Packets     int     `json:"packets"`
+	Bytes       int     `json:"bytes"`
+	IdleTimeout string  `json:"idletimeout"`
+	IdleAge     int     `json:"idleage"`
+	Priority    string  `json:"proirity"`
+	Match       string  `json:"match"`
+	Action      string  `json:"action"`
 }
 
 type Port struct {
