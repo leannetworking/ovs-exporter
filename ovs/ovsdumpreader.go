@@ -39,6 +39,7 @@ func getRegexpMap(match []string, names []string) map[string]string {
 func parseOpenFlowFlowDumpLine(line string) Flow {
 	match := flowLine.FindStringSubmatch(line)
 	result := getRegexpMap(match, flowLine.SubexpNames())
+	//TODO: we need to consider if len(result) == 0 is an error or business as usual
 	duration, _ := strconv.ParseFloat(result["duration"], 64)
 	packets, _ := strconv.Atoi(result["packets"])
 	bytes, _ := strconv.Atoi(result["bytes"])
@@ -59,7 +60,8 @@ func parseOpenFlowFlowDumpLine(line string) Flow {
 	return flow
 }
 
-func parseOpenFlowPortDumpLine(line string) Port {
+func parseOpenFlowPortDumpLine(first_line, second_line string) Port {
+	line := first_line + second_line
 	line = strings.Replace(line, "=?", "=0", -1)
 	fmt.Println(line)
 	match := portLine.FindStringSubmatch(line)
@@ -159,8 +161,7 @@ func (o OvsDumpReader) Ports(ip string, port int) ([]Port, error) {
 
 	entrySet := make([]Port, int(len(lines)/2))
 	for i := 0; i < len(lines); i += 2 {
-		twoLines := lines[i] + lines[i+1]
-		entry := parseOpenFlowPortDumpLine(twoLines)
+		entry := parseOpenFlowPortDumpLine(lines[i], lines[i+1])
 		entrySet[int(i/2)] = entry
 	}
 	fmt.Println(entrySet)
