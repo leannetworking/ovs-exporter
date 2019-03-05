@@ -99,17 +99,19 @@ func parseOpenFlowGroupsDumpLine(line string) Group {
 		GroupType: result["type"],
 	}
 
-	//Split the group line into buckets
-	buckets := strings.Split(result["buckets"], "bucket=")
-	bucketEntries := make([]Bucket, len(buckets))
-	for idx, bucket := range buckets {
-		subMatch := bucketAction.FindStringSubmatch(bucket)
-		if len(subMatch) > 1 {
-			bucketEntries[idx].Actions = subMatch[1]
+	if len(result["buckets"]) > 0 {
+		//Split the group line into buckets
+		buckets := strings.Split(result["buckets"], "bucket=")
+		bucketEntries := make([]Bucket, len(buckets))
+		for idx, bucket := range buckets {
+			subMatch := bucketAction.FindStringSubmatch(bucket)
+			if len(subMatch) > 1 {
+				bucketEntries[idx].Actions = subMatch[1]
+			}
 		}
+		group.Buckets = bucketEntries
 	}
 
-	group.Buckets = bucketEntries
 	return group
 }
 
