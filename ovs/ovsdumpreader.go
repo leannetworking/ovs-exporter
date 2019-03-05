@@ -63,7 +63,6 @@ func parseOpenFlowFlowDumpLine(line string) Flow {
 func parseOpenFlowPortDumpLine(first_line, second_line string) Port {
 	line := first_line + second_line
 	line = strings.Replace(line, "=?", "=0", -1)
-	fmt.Println(line)
 	match := portLine.FindStringSubmatch(line)
 	result := getRegexpMap(match, portLine.SubexpNames())
 	rxpackets, _ := strconv.Atoi(result["rxpackets"])
@@ -72,7 +71,6 @@ func parseOpenFlowPortDumpLine(first_line, second_line string) Port {
 	txbytes, _ := strconv.Atoi(result["txbytes"])
 	rxdrops, _ := strconv.Atoi(result["rxdrops"])
 	txdrops, _ := strconv.Atoi(result["txdrops"])
-	fmt.Println(result["port"])
 
 	port := Port{
 		PortNumber:   result["port"],
