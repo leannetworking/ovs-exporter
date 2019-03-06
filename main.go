@@ -37,6 +37,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/test", handler)
+	http.HandleFunc("/metrics", handler)
 	log.Fatal(http.ListenAndServe(listenPort, nil))
 }
