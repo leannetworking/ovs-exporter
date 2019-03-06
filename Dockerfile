@@ -8,12 +8,12 @@ FROM golang:1.12-alpine3.9 as gobuild
 RUN apk add --update --no-cache git
 
 #add the working directory
-ADD . /root/ovs-exporter
+ADD . /root/go/src/github.com/leannetworking/ovs-exporter
 
 ENV GOPATH=/root/go
 
 #build the GO binary
-RUN cd /root/ovs-exporter \ 
+RUN cd /root/go/src/github.com/leannetworking/ovs-exporter \ 
     && go get -d \
     && go build .
 
