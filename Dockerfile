@@ -28,7 +28,7 @@ RUN apk add --update --no-cache libcap-ng libssl1.1
 COPY --from=ovsbuild /usr/bin/ovs-ofctl /usr/bin/ovs-ofctl
 
 #copy the complied ovs-exporter binary
-COPY --from=gobuild /root/ovs-exporter/ovs-exporter ./
+COPY --from=gobuild /root/go/src/github.com/leannetworking/ovs-exporter/ovs-exporter ./
 
 ENTRYPOINT ["./ovs-exporter"]
 
