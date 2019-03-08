@@ -8,12 +8,12 @@ FROM golang:1.12-alpine3.9 as gobuild
 RUN apk add --update --no-cache git
 
 #add the working directory
-ADD . /root/ovs-exporter
+ADD . /root/go/src/github.com/leannetworking/ovs-exporter
 
 ENV GOPATH=/root/go
 
 #build the GO binary
-RUN cd /root/ovs-exporter \ 
+RUN cd /root/go/src/github.com/leannetworking/ovs-exporter \ 
     && go get -d \
     && go build .
 
@@ -28,7 +28,7 @@ RUN apk add --update --no-cache libcap-ng libssl1.1
 COPY --from=ovsbuild /usr/bin/ovs-ofctl /usr/bin/ovs-ofctl
 
 #copy the complied ovs-exporter binary
-COPY --from=gobuild /root/ovs-exporter/ovs-exporter ./
+COPY --from=gobuild /root/go/src/github.com/leannetworking/ovs-exporter/ovs-exporter ./
 
 ENTRYPOINT ["./ovs-exporter"]
 
